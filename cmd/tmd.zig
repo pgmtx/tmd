@@ -29,19 +29,20 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();
 
-    const clean_required = args.len == 2 and std.mem.eql(u8, args[1], "clean");
+    const cleanRequired = args.len == 2 and std.mem.eql(u8, args[1], "clean");
 
-    if (args.len <= 1 or !std.mem.eql(u8, args[1], "render") and !clean_required) {
+    if (args.len <= 1 or (!std.mem.eql(u8, args[1], "render") and !cleanRequired)) {
         try stdout.print(
             \\Usage:
             \\  tmd render [--full-html] TMD-files...
+            \\  tmd clean
             \\
         , .{});
         return;
     }
 
     if (args.len == 2) {
-        if (clean_required) {
+        if (cleanRequired) {
             try std.fs.cwd().deleteTree("output");
         } else {
             try stderr.print("No tmd files specified.\n", .{});
@@ -50,7 +51,11 @@ pub fn main() !void {
     }
 
     var optionsDone = false;
-    var option_full_html = false;
+    var optionFullHtml = false;
+
+    std.fs.cwd().access("output", .{}) catch {
+        try std.fs.cwd().makeDir("output");
+    };
 
     for (args[2..]) |arg| {
 
@@ -59,7 +64,7 @@ pub fn main() !void {
             if (optionsDone) break :blk;
 
             if (std.mem.eql(u8, arg[2..], "full-html")) {
-                option_full_html = true;
+                optionFullHtml = true;
             }
 
             continue;
@@ -106,11 +111,13 @@ pub fn main() !void {
         const renderBuffer = try fbaAllocator.alloc(u8, MaxOutFileSize);
         defer fbaAllocator.free(renderBuffer);
         var fbs = std.io.fixedBufferStream(renderBuffer);
-        try tmd.render.tmd_to_html(tmdDoc, fbs.writer(), option_full_html, gpaAllocator);
+        try tmd.render.tmd_to_html(tmdDoc, fbs.writer(), optionFullHtml, gpaAllocator);
 
         // write file
+        const filePath = try std.mem.concat(fbaAllocator, u8, &[_][]const u8{ "output/", outputFilename });
+        defer fbaAllocator.free(filePath);
 
-        const htmlFile = try std.fs.cwd().createFile(outputFilename, .{});
+        const htmlFile = try std.fs.cwd().createFile(filePath, .{});
         defer htmlFile.close();
 
         try htmlFile.writeAll(fbs.getWritten());
