@@ -29,18 +29,24 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     const stderr = std.io.getStdErr().writer();
 
-    if (args.len <= 1 or !std.mem.eql(u8, args[1], "render")) {
+    const clean_required = args.len == 2 and std.mem.eql(u8, args[1], "clean");
+
+    if (args.len <= 1 or !std.mem.eql(u8, args[1], "render") and !clean_required) {
         try stdout.print(
             \\Usage:
             \\  tmd render [--full-html] TMD-files...
             \\
         , .{});
-        std.process.exit(1);
+        return;
     }
 
     if (args.len == 2) {
-        try stderr.print("No tmd files specified.", .{});
-        std.process.exit(1);
+        if (clean_required) {
+            try std.fs.cwd().deleteTree("output");
+        } else {
+            try stderr.print("No tmd files specified.\n", .{});
+        }
+        return;
     }
 
     var optionsDone = false;
