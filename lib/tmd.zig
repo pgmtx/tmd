@@ -292,8 +292,6 @@ pub const BlockInfo = struct {
         return @alignCast(@fieldParentPtr("value", @constCast(self)));
     }
 
-    // ToDo: make ownerListElement private by using this one instead.
-    //       [update]: looks not feasible.
     pub fn next(self: *const @This()) ?*BlockInfo {
         return &(self.ownerListElement().next orelse return null).value;
     }
@@ -305,7 +303,7 @@ pub const BlockInfo = struct {
     pub fn firstChild(self: *const @This()) ?*const BlockInfo {
         switch (self.blockType) {
             .root, .base => if (self.next()) |nextBlock| {
-                if (nextBlock != self.nextSibling()) return nextBlock;
+                if (nextBlock.nestingDepth > self.nestingDepth) return nextBlock;
             },
             else => {
                 if (self.isContainer()) return self.next().?;
@@ -336,8 +334,7 @@ pub const BlockInfo = struct {
             },
             inline else => blk: {
                 std.debug.assert(self.isAtom());
-                if (self.blockType.ownerBlockInfo().ownerListElement().next) |nextElement| {
-                    const nextBlock = &nextElement.value;
+                if (self.blockType.ownerBlockInfo().next()) |nextBlock| {
                     std.debug.assert(nextBlock.nestingDepth <= self.nestingDepth);
                     if (nextBlock.nestingDepth == self.nestingDepth)
                         break :blk nextBlock;
@@ -406,7 +403,7 @@ pub const BlockType = union(enum) {
         const Container = void;
 
         pub fn isFirst(self: *const @This()) bool {
-            return self.list.ownerListElement().next.? == self.ownerBlockInfo().ownerListElement();
+            return self.list.next().? == self.ownerBlockInfo();
         }
 
         pub fn isLast(self: *const @This()) bool {
@@ -623,15 +620,6 @@ pub const LineInfo = struct {
 
     endType: LineEndType,
 
-    // For content block lines.
-    // The value is false when any of the following ones is true:
-    // * this is the last line in the most nesting block.
-    // * the line doesn't contain a plainText token.
-    // * no plainText tokens after an open-mark token in the line.
-    // * no plainText tokens before a close-mark token in the line.
-    // * the last plainText token in the line ends with a CJK char
-    //   and the first plainText token in the next line (in the same most nesting block)
-    //   containing plainText tokens starts with a CJK char.
     treatEndAsSpace: bool = false,
 
     // ...
@@ -682,6 +670,14 @@ pub const LineInfo = struct {
         return @alignCast(@fieldParentPtr("value", @constCast(self)));
     }
 
+    pub fn next(self: *const @This()) ?*LineInfo {
+        return &(self.ownerListElement().next orelse return null).value;
+    }
+
+    pub fn prev(self: *const @This()) ?*LineInfo {
+        return &(self.ownerListElement().prev orelse return null).value;
+    }
+
     pub fn start(self: *const @This(), trimContainerMark: bool, trimLeadingSpaces: bool) u32 {
         if (trimContainerMark) {
             if (self.containerMark) |mark| switch (mark) {
@@ -712,6 +708,13 @@ pub const LineInfo = struct {
                 break :blk Range{ .start = lineType.markEndWithSpaces, .end = self.rangeTrimmed.end };
             },
             else => unreachable,
+        };
+    }
+
+    pub fn isBoundary(self: @This()) bool {
+        return switch (self.lineType) {
+            inline .baseBlockOpen, .baseBlockClose, .codeBlockStart, .codeBlockEnd, .customBlockStart, .customBlockEnd => true,
+            else => false,
         };
     }
 };
@@ -838,6 +841,10 @@ pub const TokenInfo = struct {
         return @tagName(self.tokenType);
     }
 
+    pub fn range(self: *const @This()) Range {
+        return .{ .start = self.start(), .end = self.end() };
+    }
+
     pub fn start(self: *const @This()) u32 {
         switch (self.tokenType) {
             .linkInfo => {
@@ -920,10 +927,11 @@ pub const LeadingMark = std.meta.FieldType(TokenType, .leadingMark);
 pub const LinkInfo = std.meta.FieldType(TokenType, .linkInfo);
 
 pub const TokenType = union(enum) {
+
     // Try to keep each field size <= (32 + 32 + 64) bits.
 
     // ToDo: lineEndSpace (merged into plainText. .start == .end means lineEndSpace)
-    plainText: struct {
+    plainText: packed struct {
         start: u32,
         // The value should be the same as the start of the next token, or end of line.
         // But it is good to keep it here, to verify the this value is the same as ....
@@ -933,29 +941,27 @@ pub const TokenType = union(enum) {
         // it is only used for self-defined URL.
         nextInLink: ?*TokenInfo = null,
     },
-    commentText: struct {
+    commentText: packed struct {
         start: u32,
         // The value should be the same as the end of line.
         end: u32,
 
         inAttributesLine: bool, // ToDo: don't use commentText tokens for attributes lines.
     },
-    evenBackticks: struct {
+    evenBackticks: packed struct {
         start: u32,
         pairCount: u32,
         secondary: bool,
 
         // `` means a void char.
-        // ^`` means a ` char.
-        // ToDo: ```` means non-collapsable space?
+        // ```` means (pairCount-1) non-collapsable spaces?
+        // ^```` means pairCount ` chars.
     },
-    spanMark: struct {
+    spanMark: packed struct {
         // For a close mark, this might be the start of the attached blanks.
         // For a open mark, this might be the position of the secondary sign.
         start: u32,
         blankLen: u32, // blank char count after open-mark or before close-mark in a line.
-
-        // ToDo: replace the bools as bits.
 
         open: bool,
         secondary: bool = false,
@@ -971,6 +977,8 @@ pub const TokenType = union(enum) {
             return @tagName(self.markType);
         }
     },
+    // ToDo: with the zig tip, this size of this type is 24.
+    //       In fact, 16 is enough.
     // A linkInfo token is always before an open .link SpanMarkType token.
     linkInfo: struct {
         attrs: ?*ElementAttibutes = null,
@@ -1017,7 +1025,7 @@ pub const TokenType = union(enum) {
             self.followingOpenLinkSpanMark().urlConfirmed = confirmed;
         }
     },
-    leadingMark: struct {
+    leadingMark: packed struct {
         start: u32,
         blankLen: u32, // blank char count after the mark.
         markType: LineSpanMarkType,
@@ -1033,7 +1041,6 @@ pub const TokenType = union(enum) {
         }
     },
     // ToDo: follow a .media LineSpanMarkType.
-    //       Noneistance for nothing.
     //mediaInfo: struct {
     //    attrs: *MediaAttributes,
     //},
@@ -1048,7 +1055,6 @@ pub const SpanMarkType = enum(u8) {
     fontWeight,
     fontStyle,
     fontSize,
-    spoiler,
     deleted,
     marked,
     supsub,
@@ -1071,4 +1077,5 @@ pub const LineSpanMarkType = enum(u8) {
     comment, // //
     media, // @@
     escape, // !!
+    spoiler, // ??
 };

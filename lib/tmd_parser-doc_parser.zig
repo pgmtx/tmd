@@ -45,8 +45,7 @@ fn tryToAttributeBlock(parser: *DocParser, oldLastBlockInfo: *tmd.BlockInfo) !vo
     if (oldLastBlockInfo.blockType != .attributes) {
         if (parser.nextElementAttributes) |as| {
             var block = oldLastBlockInfo;
-            const attributesBlock = while (block.ownerListElement().prev) |prevElement| {
-                const prevBlock = &prevElement.value;
+            const attributesBlock = while (block.prev()) |prevBlock| {
                 switch (prevBlock.blockType) {
                     .attributes => break prevBlock,
                     else => block = prevBlock,
@@ -114,7 +113,7 @@ fn onNewAttributesLine(parser: *DocParser, lineInfo: *const tmd.LineInfo) !void 
     if (headElement.value.tokenType != .commentText) return;
     std.debug.assert(headElement.next == null);
     const commentToken = &headElement.value;
-    const comment = parser.tmdDoc.data[commentToken.start()..commentToken.end()];
+    const comment = parser.tmdDoc.rangeData(commentToken.range());
     const attrs = AttributeParser.parse_element_attributes(comment);
 
     //if (forBulletContainer) {
@@ -347,12 +346,13 @@ fn parse(parser: *DocParser) !void {
                 break :parse_line;
             } // atom code/custom block context
 
-            lineInfo.rangeTrimmed.start = leadingBlankEnd;
-
             // handle blank line.
             if (lineScanner.lineEnd) |_| {
+                // For a blank line, all blanks belongs to the line-end token.
+                lineInfo.rangeTrimmed.start = lineInfo.range.start;
+                lineInfo.rangeTrimmed.end = lineInfo.range.start;
+
                 lineInfo.lineType = .{ .blank = .{} };
-                lineInfo.rangeTrimmed.end = leadingBlankEnd;
 
                 if (currentAtomBlockInfo.blockType != .blank) {
                     const blankBlockInfo = try parser.createAndPushBlockInfoElement();
@@ -370,6 +370,8 @@ fn parse(parser: *DocParser) !void {
 
                 break :parse_line;
             }
+
+            lineInfo.rangeTrimmed.start = leadingBlankEnd;
 
             const lineStart = lineScanner.cursor;
             // try to parse leading container mark.

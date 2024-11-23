@@ -1,7 +1,7 @@
 
 ##### Tapir's Markdown Format
 
-Tapir's Markdown (TapirMD) is a distinct evolution of traditional markdown __#note-1__,
+Tapir's Markdown (TapirMD) is a distinct evolution of traditional markdown __#note-markdown__,
 offering both increased specificity and enhanced power
 while preserving the familiar readability of its predecessor.
 
@@ -27,12 +27,6 @@ while preserving the familiar readability of its predecessor.
 
 ::smaller font size:: and ^::larger font size::.
 
-spoiler text: ??spoiler text?? (selectable, 
-invisible when unslected, visible when selected).
-
-secure spoiler text: ^??secure spoiler text??
-(selectable, always invisible).
-
 ~~deleted text~~ and invisible text:
 ^~~invisible text~~ (non-selectable, still occupy space).
 
@@ -45,7 +39,7 @@ this is __a broken link__,
 and this is ^__an underlined text__.
 
 This is a code span: ` var z = foo::x || bar::y `.
-and this is a mono font text span:
+And this is a mono font text span:
 ^` var z = x$$ 2 $$ + y^$$ n $$`.
 }
 
@@ -70,6 +64,10 @@ This block
 \\ several times.
 \\ The following is an image.
 
+The answer is:
+?? 997
+(visible when selected).
+
 && ./static/image/sample-image.png
 }
 
@@ -86,7 +84,7 @@ This block
 {
 // __Go 101 website ` https://go101.org
 
-Visit __Go 101 website__ (the link is defined above) __#note-2__.
+Visit __Go 101 website__ (the link is defined above) __#note-go101__.
 
 Go 1.22 broke backwards compatibility. More information
 is on __`for` Loop Semantic Changes in Go 1.22:
@@ -156,11 +154,11 @@ __No Safe Efficient Ways to Do Three-way String Comparisons in Go__
   }
   @@@
 
-! This is a note box without header.
+! This is a notice box without header.
 
 ! ### WARNING!
   {
-  This is a note box with header.
+  This is a notice box with header.
   }
 
 ? This is a reveal box without summary.
@@ -286,7 +284,7 @@ The below is a horizontal line.
 
 @@@ #section-demo-7
 ###+++++++++++++++++++++++++++++++++++++++++
-	Demo 7 (line spacing)
+	Demo 7 (line end spacing)
 
 # ### TapirMD Source
   ### Render Result
@@ -305,20 +303,17 @@ hello`
 你好
 世界
 
+你好 ``
+世界
+
 hello
 世界
 
-你好
-world
-
-你好 ``
+hello ``
 世界
 
 hello
 `` 世界
-
-你好 ``
-world
 }
 
 @@@ #section-demo-8
@@ -350,8 +345,8 @@ Backticks in code span: `
 ---
 
 {//
-@@@ #note-1
+@@@ #note-markdown
 Traditional markdown is known for it is limited and not well specified.
-@@@ #note-2
+@@@ #note-go101
 The **%% Go 101 %%** website is an up-to-date knowledge base for Go programming self learning.
 }

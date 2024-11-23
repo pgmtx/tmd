@@ -26,7 +26,7 @@ pub const bytesKindTable = blk: {
 
         // ToDo: Now, for zig design limitaiton: https://ziggit.dev/t/6726,
         //       The best effort is make @sizeOf(ByteKind) == 2.
-        test "assure size of ByteKind" {
+        comptime {
             std.debug.assert(@sizeOf(ByteKind) <= 2);
         }
 
@@ -44,6 +44,7 @@ pub const bytesKindTable = blk: {
 
     for (0..'\n') |i| table[i] = .{ .blank = .{ .isSpace = false } };
     for ('\n' + 1..33) |i| table[i] = .{ .blank = .{ .isSpace = false } };
+    table[127] = .{ .blank = .{ .isSpace = false } };
     table[' '] = .{ .blank = .{ .isSpace = true } };
     table['\t'] = .{ .blank = .{ .isSpace = true } };
 
@@ -51,17 +52,16 @@ pub const bytesKindTable = blk: {
     table['/'] = .{ .leadingMark = .comment };
     table['&'] = .{ .leadingMark = .media };
     table['!'] = .{ .leadingMark = .escape };
+    table['?'] = .{ .leadingMark = .spoiler };
 
     table['*'] = .{ .spanMark = .fontWeight };
     table['%'] = .{ .spanMark = .fontStyle };
     table[':'] = .{ .spanMark = .fontSize };
-    table['?'] = .{ .spanMark = .spoiler };
     table['~'] = .{ .spanMark = .deleted };
     table['|'] = .{ .spanMark = .marked };
     table['_'] = .{ .spanMark = .link };
     table['$'] = .{ .spanMark = .supsub };
     table['`'] = .{ .spanMark = .code };
-    //table['!'] = .{.spanMark = .{ .markType = .escaped, .precedence = 3 } };
 
     break :blk table;
 };
@@ -294,6 +294,11 @@ pub fn slice_to_first_space(str: []const u8) []const u8 {
     var i: usize = 0;
     while (i < str.len and bytesKindTable[str[i]].isSpace()) : (i += 1) {}
     return str[0..i];
+}
+
+pub fn begins_with_blank(data: []const u8) bool {
+    if (data.len == 0) return false;
+    return bytesKindTable[data[0]].isBlank();
 }
 
 pub fn ends_with_blank(data: []const u8) bool {
