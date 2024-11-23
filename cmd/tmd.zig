@@ -74,7 +74,11 @@ pub fn main() !void {
 
         defer fba.reset();
 
-        const tmdFile = try std.fs.cwd().openFile(arg, .{});
+        const tmdFile = std.fs.cwd().openFile(arg, .{}) catch {
+            std.debug.print("Could not open the following file: {s}\n", .{arg});
+            try std.fs.cwd().deleteTree("output");
+            return;
+        };
         defer tmdFile.close();
         const stat = try tmdFile.stat();
         if (stat.kind != .file) try stderr.print("[{s}] is not a file.\n", .{arg});
