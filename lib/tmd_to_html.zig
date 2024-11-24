@@ -13,28 +13,32 @@ pub fn tmd_to_html(tmdDoc: tmd.Doc, writer: anytype, completeHTML: bool, allocat
         try writeHead(writer);
         try r.render(writer, true);
         try writeFoot(writer);
+        try createCssFile();
     } else {
         try r.render(writer, false);
     }
 }
 
-const css_style = @embedFile("example.css");
+const cssStyle = @embedFile("example.css");
 
 fn writeHead(w: anytype) !void {
     _ = try w.write(
         \\<html>
         \\<head>
         \\<meta charset="utf-8">
-        \\<title>Tapir's Markdown Format</title>
-        \\<style>
-    );
-    _ = try w.write(css_style);
-    _ = try w.write(
-        \\</style>
+        \\<link rel="stylesheet" href="/style.css" />
+        \\<title>pgmtx!</title>
         \\</head>
         \\<body>
         \\
     );
+    //_ = try w.write(css_style);
+    // _ = try w.write(
+    //     \\</style>
+    //     \\</head>
+    //     \\<body>
+    //     \\
+    // );
 }
 
 fn writeFoot(w: anytype) !void {
@@ -43,4 +47,13 @@ fn writeFoot(w: anytype) !void {
         \\</body>
         \\</html>
     );
+}
+
+fn createCssFile() !void {
+    const cssFilePath = "output/" ++ "style.css";
+
+    const cssFile = try std.fs.cwd().createFile(cssFilePath, .{});
+    defer cssFile.close();
+
+    try cssFile.writeAll(cssStyle);
 }

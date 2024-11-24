@@ -75,7 +75,7 @@ pub fn main() !void {
         defer fba.reset();
 
         const tmdFile = std.fs.cwd().openFile(arg, .{}) catch {
-            std.debug.print("Could not open the following file: {s}\n", .{arg});
+            try stdout.print("Could not open the following file: {s}\n", .{arg});
             try std.fs.cwd().deleteTree("output");
             return;
         };
