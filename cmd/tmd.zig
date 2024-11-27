@@ -8,6 +8,11 @@ const tmd = @import("tmd");
 const demo3 = @embedFile("demo3.tmd");
 const Option = tmd.render.Option;
 
+fn exit(comptime fmt: []const u8, args: anytype) !void {
+    std.log.err(fmt, args);
+    try std.fs.cwd().deleteTree("output");
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -28,14 +33,13 @@ pub fn main() !void {
     std.debug.assert(args.len > 0);
 
     const stdout = std.io.getStdOut().writer();
-    const stderr = std.io.getStdErr().writer();
 
     const cleanRequired = args.len == 2 and std.mem.eql(u8, args[1], "clean");
 
     if (args.len <= 1 or (!std.mem.eql(u8, args[1], "render") and !cleanRequired)) {
         try stdout.print(
             \\Usage:
-            \\  tmd render [--full-html] TMD-files...
+            \\  tmd render [--full-html | --include-css] TMD-files...
             \\  tmd clean
             \\
         , .{});
@@ -46,7 +50,7 @@ pub fn main() !void {
         if (cleanRequired) {
             try std.fs.cwd().deleteTree("output");
         } else {
-            try stderr.print("No tmd files specified.\n", .{});
+            std.log.err("No tmd files specified.", .{});
         }
         return;
     }
@@ -58,22 +62,28 @@ pub fn main() !void {
         try std.fs.cwd().makeDir("output");
     };
 
+    var last_parameter: ?[]const u8 = null;
+
     for (args[2..]) |arg| {
 
         // ToDo: improve ...
         if (std.mem.startsWith(u8, arg, "--")) blk: {
             if (optionsDone) break :blk;
 
+            if (last_parameter) |param| {
+                std.log.warn("parameter [{s}] will be ignored.", .{param});
+            }
+
             if (std.mem.eql(u8, arg[2..], "full-html")) {
                 option = Option.fullHtml;
             } else if (std.mem.eql(u8, arg[2..], "include-css")) {
                 option = Option.includeCss;
             } else {
-                try stderr.print("Got unexpected parameter : {s}.\n", .{arg});
-                try std.fs.cwd().deleteTree("output");
+                try exit("Got unexpected parameter : {s}.", .{arg});
                 return;
             }
 
+            last_parameter = arg;
             continue;
         } else optionsDone = true;
 
@@ -82,13 +92,15 @@ pub fn main() !void {
         defer fba.reset();
 
         const tmdFile = std.fs.cwd().openFile(arg, .{}) catch {
-            try stdout.print("Could not open the following file: {s}\n", .{arg});
-            try std.fs.cwd().deleteTree("output");
+            try exit("Could not open the following file: {s}", .{arg});
             return;
         };
         defer tmdFile.close();
         const stat = try tmdFile.stat();
-        if (stat.kind != .file) try stderr.print("[{s}] is not a file.\n", .{arg});
+        if (stat.kind != .file) {
+            try exit("[{s}] is not a file.", .{arg});
+            return;
+        }
 
         const tmdContent = try tmdFile.readToEndAlloc(fbaAllocator, MaxInFileSize);
         defer fbaAllocator.free(tmdContent);
