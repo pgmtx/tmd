@@ -1077,7 +1077,7 @@ pub const TmdRender = struct {
                     .leadingMark => |m| {
                         switch (m.markType) {
                             .lineBreak => {
-                                _ = try w.write("<br/>");
+                                _ = try w.write("<br>");
                             },
                             .escape => {},
                             .spoiler => if (tokenInfoElement.next) |_| {
