@@ -68,6 +68,10 @@ pub fn main() !void {
                 option = Option.fullHtml;
             } else if (std.mem.eql(u8, arg[2..], "include-css")) {
                 option = Option.includeCss;
+            } else {
+                try stderr.print("Got unexpected parameter : {s}.\n", .{arg});
+                try std.fs.cwd().deleteTree("output");
+                return;
             }
 
             continue;
