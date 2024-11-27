@@ -13,6 +13,28 @@ fn exit(comptime fmt: []const u8, args: anytype) !void {
     try std.fs.cwd().deleteTree("output");
 }
 
+fn create_tmd_file(args: []const []const u8) !void {
+    if (args.len > 4) {
+        std.log.err("too much arguments", .{});
+        return;
+    }
+
+    var buffer: [128]u8 = undefined;
+    const fileName =
+        if (!std.mem.endsWith(u8, args[2], ".tmd"))
+            try std.fmt.bufPrint(&buffer, "{s}{s}", .{args[2], ".tmd"})
+        else
+            args[2];
+
+    const file = try std.fs.cwd().createFile(fileName, .{ .read = true });
+    defer file.close();
+
+    if (args.len == 4) {
+        try file.writeAll("###### ");
+        try file.writeAll(args[3]);
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -35,12 +57,14 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
     const cleanRequired = args.len == 2 and std.mem.eql(u8, args[1], "clean");
+    const enteredNewCommand = args.len >= 2 and std.mem.eql(u8, args[1], "new");
 
-    if (args.len <= 1 or (!std.mem.eql(u8, args[1], "render") and !cleanRequired)) {
+    if (args.len <= 1 or (!std.mem.eql(u8, args[1], "render") and !cleanRequired and !enteredNewCommand)) {
         try stdout.print(
             \\Usage:
             \\  tmd render [--full-html | --include-css] TMD-files...
             \\  tmd clean
+            \\  tmd new filename [title]
             \\
         , .{});
         return;
@@ -49,9 +73,16 @@ pub fn main() !void {
     if (args.len == 2) {
         if (cleanRequired) {
             try std.fs.cwd().deleteTree("output");
+        } else if (enteredNewCommand) {
+            std.log.err("Expected filename.", .{});
         } else {
             std.log.err("No tmd files specified.", .{});
         }
+        return;
+    }
+
+    if (std.mem.eql(u8, args[1], "new")) {
+        try create_tmd_file(args);
         return;
     }
 
