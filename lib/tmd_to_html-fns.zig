@@ -29,7 +29,13 @@ pub fn writeBareTag(w: anytype, tag: []const u8, classesSeperatedBySpace: []cons
     _ = try w.write(tag);
     _ = try w.write(" ");
     try writeBlockAttributes(w, classesSeperatedBySpace, attributes);
-    _ = try w.write("/>");
+    
+    // p tag must not be used as <p/>
+    if (std.mem.eql(u8, tag, "p")) {
+        _ = try w.write("></p>");
+    } else {
+        _ = try w.write("/>");
+    }
     if (writeNewLine) _ = try w.write("\n");
 }
 
