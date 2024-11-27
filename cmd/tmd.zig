@@ -6,6 +6,7 @@ const tmd = @import("tmd");
 //const tmd_to_html = @import("tmd_to_html.zig");
 
 const demo3 = @embedFile("demo3.tmd");
+const Option = tmd.render.Option;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -51,7 +52,7 @@ pub fn main() !void {
     }
 
     var optionsDone = false;
-    var optionFullHtml = false;
+    var option = Option.none;
 
     std.fs.cwd().access("output", .{}) catch {
         try std.fs.cwd().makeDir("output");
@@ -64,7 +65,9 @@ pub fn main() !void {
             if (optionsDone) break :blk;
 
             if (std.mem.eql(u8, arg[2..], "full-html")) {
-                optionFullHtml = true;
+                option = Option.fullHtml;
+            } else if (std.mem.eql(u8, arg[2..], "include-css")) {
+                option = Option.includeCss;
             }
 
             continue;
@@ -115,7 +118,7 @@ pub fn main() !void {
         const renderBuffer = try fbaAllocator.alloc(u8, MaxOutFileSize);
         defer fbaAllocator.free(renderBuffer);
         var fbs = std.io.fixedBufferStream(renderBuffer);
-        try tmd.render.tmd_to_html(tmdDoc, fbs.writer(), optionFullHtml, gpaAllocator);
+        try tmd.render.tmd_to_html(tmdDoc, fbs.writer(), option, gpaAllocator);
 
         // write file
         const filePath = try std.mem.concat(fbaAllocator, u8, &[_][]const u8{ "output/", outputFilename });
