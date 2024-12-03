@@ -62,7 +62,7 @@ pub fn main() !void {
     if (args.len <= 1 or (!std.mem.eql(u8, args[1], "render") and !cleanRequired and !enteredNewCommand)) {
         try stdout.print(
             \\Usage:
-            \\  tmd render [--full-html | --include-css] --output:dir TMD-files...
+            \\  tmd render [--full-html | --include-css] TMD-files...
             \\  tmd clean
             \\  tmd new filename [title]
             \\
@@ -95,10 +95,6 @@ pub fn main() !void {
 
     var last_parameter: ?[]const u8 = null;
 
-    const output_parameter = "output:";
-    const output_parameter_length: usize = output_parameter.len;
-    var output_directory: ?[]const u8 = null;
-
     for (args[2..]) |arg| {
 
         // ToDo: improve ...
@@ -112,15 +108,7 @@ pub fn main() !void {
             if (std.mem.eql(u8, arg[2..], "full-html")) {
                 option = Option.fullHtml;
             } else if (std.mem.eql(u8, arg[2..], "include-css")) {
-                option = Option.includeCss; 
-            } else if (std.mem.eql(u8, arg[2..2+output_parameter_length], output_parameter)) {
-                output_directory = arg[2+output_parameter_length..];
-                const path = try std.mem.concat(fbaAllocator, u8, &[_][]const u8{ "output/", output_directory.? });
-                defer fbaAllocator.free(path);
-                
-                std.fs.cwd().access(path, .{}) catch {
-                    try std.fs.cwd().makeDir(path);
-                };
+                option = Option.includeCss;
             } else {
                 try exit("Got unexpected parameter : {s}.", .{arg});
                 return;
@@ -180,12 +168,7 @@ pub fn main() !void {
         try tmd.render.tmd_to_html(tmdDoc, fbs.writer(), option, gpaAllocator);
 
         // write file
-        const filePath =
-            if (output_directory) |dir|
-                try std.mem.concat(fbaAllocator, u8, &[_][]const u8{ "output/", dir, "/", outputFilename })
-            else
-                try std.mem.concat(fbaAllocator, u8, &[_][]const u8{ "output/", outputFilename });
-            
+        const filePath = try std.mem.concat(fbaAllocator, u8, &[_][]const u8{ "output/", outputFilename });
         defer fbaAllocator.free(filePath);
 
         const htmlFile = try std.fs.cwd().createFile(filePath, .{});
