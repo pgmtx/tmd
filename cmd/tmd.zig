@@ -20,7 +20,7 @@ fn create_tmd_file(args: []const []const u8) !void {
     }
 
     if (!std.mem.endsWith(u8, args[2], ".tmd")) {
-        std.log.err("expected file ending with .tmd, got {s}.", .{args[2]});
+        std.log.err("expected file ending with .tmd, got [{s}].", .{args[2]});
         return;
     }
 
@@ -135,6 +135,11 @@ pub fn main() !void {
         const tmdContent = try tmdFile.readToEndAlloc(fbaAllocator, MaxInFileSize);
         defer fbaAllocator.free(tmdContent);
 
+        if (std.mem.startsWith(u8, tmdContent, "//draft")) {
+            std.log.info("[{s}] is a draft -- ignored.", .{arg});
+            continue;
+        }
+
         std.debug.assert(tmdContent.len == stat.size);
 
         // parse file
@@ -181,4 +186,7 @@ pub fn main() !void {
             \\
         , .{ arg, stat.size, outputFilename, fbs.getWritten().len });
     }
+
+    // Delete the dir if it is empty
+    std.fs.cwd().deleteDir("output") catch return;
 }
