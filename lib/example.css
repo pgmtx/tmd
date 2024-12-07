@@ -161,6 +161,7 @@ body {
 }
 
 .tmd-unstyled {
+  width: fit-content;
 }
 
 .tmd-unstyled-header {
