@@ -937,7 +937,7 @@ pub const TmdRender = struct {
         mark: ?*tmd.SpanMark = null,
     };
     const MarkStatusesTracker = struct {
-        markStatusElements: [MarkCount]list.Element(MarkStatus) = .{.{}} ** MarkCount,
+        markStatusElements: [MarkCount]list.Element(MarkStatus) = [_]list.Element(MarkStatus){.{}} ** MarkCount,
         marksStack: list.List(MarkStatus) = .{},
 
         activeLinkInfo: ?*tmd.LinkInfo = null,

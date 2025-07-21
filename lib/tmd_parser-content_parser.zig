@@ -22,7 +22,7 @@ linkSpanStatus: *SpanStatus = undefined,
 blockSession: struct {
     atomBlock: *tmd.BlockInfo = undefined,
 
-    spanStatuses: [MarkCount]SpanStatus = .{.{}} ** MarkCount,
+    spanStatuses: [MarkCount]SpanStatus = [_]SpanStatus{.{}} ** MarkCount,
     currentTextNumber: u32 = 0,
 
     lastLinkInfoToken: ?*tmd.TokenInfo = null,

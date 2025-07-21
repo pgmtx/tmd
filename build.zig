@@ -19,8 +19,9 @@ pub fn build(b: *std.Build) !void {
     const unitTest = b.addTest(.{
         .name = "unit_test",
         .root_source_file = b.path("lib/tests.zig"),
-        .target = b.host,
+        .target = b.graph.host,
     });
+
     b.installArtifact(unitTest);
     const runtTests = b.addRunArtifact(unitTest);
     const testStep = b.step("test", "Run unit tests");
